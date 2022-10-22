@@ -1,7 +1,9 @@
 package serviceregistry
 
 import (
+	"errors"
 	"fmt"
+	"github.com/ushieru/serendipia/src/utils"
 	"time"
 )
 
@@ -11,13 +13,21 @@ type ServiceRegistry struct {
 	Handlers  []func()
 }
 
+func NewServiceRegistry(heartBeat int64) *ServiceRegistry {
+	return &ServiceRegistry{
+		Services:  make(map[string]Service),
+		HeartBeat: heartBeat,
+		Handlers:  make([]func(), 0),
+	}
+}
+
 func (serviceRegistry *ServiceRegistry) SetHandler(handler func()) {
 	serviceRegistry.Handlers = append(serviceRegistry.Handlers, handler)
 }
 
 func (serviceRegistry *ServiceRegistry) Register(name string, ip string, port string) string {
 	key := name + ip + port
-	now := time.Now().UTC().UnixNano() / int64(time.Millisecond)
+	now := utils.GetTimeStamp()
 	if val, ok := serviceRegistry.Services[key]; ok {
 		val.Timestamp = now
 		fmt.Printf("[ServiceRegistry] Updated service: %s at %s:%s", name, ip, port)
@@ -34,6 +44,15 @@ func (serviceRegistry *ServiceRegistry) Register(name string, ip string, port st
 	return key
 }
 
+func (serviceRegistry *ServiceRegistry) Get(name string) (*Service, error) {
+	for _, service := range serviceRegistry.Services {
+		if service.Name == name {
+			return &service, nil
+		}
+	}
+	return nil, errors.New("Service not found")
+}
+
 func (serviceRegistry *ServiceRegistry) Unregister(name string, ip string, port string) {
 	key := name + ip + port
 	delete(serviceRegistry.Services, key)
@@ -41,7 +60,7 @@ func (serviceRegistry *ServiceRegistry) Unregister(name string, ip string, port 
 }
 
 func (serviceRegistry *ServiceRegistry) Cleanup() {
-	now := time.Now().UTC().UnixNano() / int64(time.Millisecond)
+	now := utils.GetTimeStamp()
 	for key, service := range serviceRegistry.Services {
 		willBeEliminated := now-service.Timestamp > int64(serviceRegistry.HeartBeat)
 		if willBeEliminated {
