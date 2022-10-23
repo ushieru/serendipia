@@ -16,12 +16,12 @@ type CircuitBreaker struct {
 	client           http.Client
 }
 
-func NewCircuitBreaker() *CircuitBreaker {
+func NewCircuitBreaker(failureThreshold int64, cooldownPeriod int64, requestTimeout int64) *CircuitBreaker {
 	return &CircuitBreaker{
 		States:           make(map[string]CircuitBreakerState),
-		FailureThreshold: 5,
-		CooldownPeriod:   10,
-		RequestTimeout:   2,
+		FailureThreshold: failureThreshold,
+		CooldownPeriod:   cooldownPeriod,
+		RequestTimeout:   requestTimeout,
 		client:           http.Client{},
 	}
 }
