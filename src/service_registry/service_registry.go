@@ -11,18 +11,12 @@ import (
 type ServiceRegistry struct {
 	Services  sync.Map
 	HeartBeat int64
-	Handlers  []func()
 }
 
 func NewServiceRegistry(heartBeat int64) *ServiceRegistry {
 	return &ServiceRegistry{
 		HeartBeat: heartBeat,
-		Handlers:  make([]func(), 0),
 	}
-}
-
-func (serviceRegistry *ServiceRegistry) SetHandler(handler func()) {
-	serviceRegistry.Handlers = append(serviceRegistry.Handlers, handler)
 }
 
 func (serviceRegistry *ServiceRegistry) Register(name string, ip string, protocol string, port string) string {
