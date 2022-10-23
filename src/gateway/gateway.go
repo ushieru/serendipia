@@ -11,11 +11,13 @@ import (
 
 type Gateway struct {
 	ServiceRegistry serviceregistry.ServiceRegistry
+	CircuitBreaker  circuitbreaker.CircuitBreaker
 }
 
 func NewGateway() *Gateway {
 	return &Gateway{
 		ServiceRegistry: serviceregistry.ServiceRegistry{},
+		CircuitBreaker:  *circuitbreaker.NewCircuitBreaker(5, 10, 2),
 	}
 }
 
@@ -27,10 +29,8 @@ func (gateway Gateway) CallService(c *fiber.Ctx) error {
 	if err != nil {
 		return c.SendStatus(fiber.StatusNotFound)
 	}
-	CBreaker := circuitbreaker.NewCircuitBreaker()
-	// TODO: CHECK http and https integration
 	url := service.Protocol + "://" + service.Ip + ":" + service.Port + "/" + path
-	serviceResponse, err := CBreaker.CallService(method, url, c.Context().RequestBodyStream(), c.GetReqHeaders())
+	serviceResponse, err := gateway.CircuitBreaker.CallService(method, url, c.Context().RequestBodyStream(), c.GetReqHeaders())
 	if err != nil {
 		fmt.Println("[Gateway] Error >>>", err.Error())
 		return c.SendStatus(fiber.StatusInternalServerError)
