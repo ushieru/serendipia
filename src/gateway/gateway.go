@@ -1,7 +1,7 @@
 package gateway
 
 import (
-	"fmt"
+	"log"
 	"github.com/gofiber/fiber/v2"
 	"github.com/ushieru/serendipia/src/circuit_breaker"
 	"github.com/ushieru/serendipia/src/service_registry"
@@ -16,7 +16,7 @@ type Gateway struct {
 
 func NewGateway() *Gateway {
 	return &Gateway{
-		ServiceRegistry: serviceregistry.ServiceRegistry{},
+		ServiceRegistry: *serviceregistry.NewServiceRegistry(5),
 		CircuitBreaker:  *circuitbreaker.NewCircuitBreaker(5, 10, 2),
 	}
 }
@@ -32,13 +32,13 @@ func (gateway Gateway) CallService(c *fiber.Ctx) error {
 	url := service.Protocol + "://" + service.Ip + ":" + service.Port + "/" + path
 	serviceResponse, err := gateway.CircuitBreaker.CallService(method, url, c.Context().RequestBodyStream(), c.GetReqHeaders())
 	if err != nil {
-		fmt.Println("[Gateway] Error >>>", err.Error())
+		log.Println("[Gateway] Error >>>", err.Error())
 		return c.SendStatus(fiber.StatusInternalServerError)
 	}
 	defer serviceResponse.Body.Close()
 	body, responseBodyErr := io.ReadAll(serviceResponse.Body)
 	if responseBodyErr != nil {
-		fmt.Println("[Gateway] Response Body Error >>>", responseBodyErr.Error())
+		log.Println("[Gateway] Response Body Error >>>", responseBodyErr.Error())
 		return c.SendStatus(fiber.StatusInternalServerError)
 	}
 	response := c.Response()

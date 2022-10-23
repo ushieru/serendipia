@@ -2,7 +2,7 @@ package serviceregistry
 
 import (
 	"errors"
-	"fmt"
+	"log"
 	"github.com/ushieru/serendipia/src/utils"
 	"sync"
 	"time"
@@ -31,7 +31,7 @@ func (serviceRegistry *ServiceRegistry) Register(name string, ip string, protoco
 			Port:      s.Port,
 			Timestamp: now,
 		})
-		fmt.Println("[ServiceRegistry] Updated service:", name, "at", ip, ":", port, "\ntime", now)
+		log.Println("[ServiceRegistry] Updated service:", name, "at", ip, ":", port, "\ntime", now)
 		return key
 	}
 	service := Service{
@@ -42,13 +42,13 @@ func (serviceRegistry *ServiceRegistry) Register(name string, ip string, protoco
 		Timestamp: now,
 	}
 	serviceRegistry.Services.Store(key, service)
-	fmt.Println("[ServiceRegistry] Registered service:", name, "at", ip, ":", port)
+	log.Println("[ServiceRegistry] Registered service:", name, "at", ip, ":", port)
 	return key
 }
 
 func (serviceRegistry *ServiceRegistry) Get(name string) (*Service, error) {
 	var serviceResponse Service
-	serviceRegistry.Services.Range(func(k, service interface{}) bool {
+	serviceRegistry.Services.Range(func(k, service any) bool {
 		if service.(Service).Name == name {
 			serviceResponse = service.(Service)
 			return false
@@ -61,12 +61,12 @@ func (serviceRegistry *ServiceRegistry) Get(name string) (*Service, error) {
 func (serviceRegistry *ServiceRegistry) Unregister(name string, ip string, port string) {
 	key := name + ip + port
 	serviceRegistry.Services.Delete(key)
-	fmt.Println("[ServiceRegistry] Unregister service:", name, "at", ip, ":", port)
+	log.Println("[ServiceRegistry] Unregister service:", name, "at", ip, ":", port)
 }
 
 func (serviceRegistry *ServiceRegistry) Cleanup() {
 	now := utils.GetTimeStamp()
-	serviceRegistry.Services.Range(func(k, service interface{}) bool {
+	serviceRegistry.Services.Range(func(k, service any) bool {
 		s := service.(Service)
 		willBeEliminated := now-s.Timestamp > int64(serviceRegistry.HeartBeat)
 		if willBeEliminated {
