@@ -2,8 +2,8 @@ package serviceregistry
 
 import (
 	"errors"
-	"log"
 	"github.com/ushieru/serendipia/src/utils"
+	"log"
 	"sync"
 	"time"
 )
@@ -11,11 +11,13 @@ import (
 type ServiceRegistry struct {
 	Services  sync.Map
 	HeartBeat int64
+	serviceRR map[string]int
 }
 
 func NewServiceRegistry(heartBeat int64) *ServiceRegistry {
 	return &ServiceRegistry{
 		HeartBeat: heartBeat,
+		serviceRR: make(map[string]int),
 	}
 }
 
@@ -31,7 +33,7 @@ func (serviceRegistry *ServiceRegistry) Register(name string, ip string, protoco
 			Port:      s.Port,
 			Timestamp: now,
 		})
-		log.Println("[ServiceRegistry] Updated service:", name, "at", ip, ":", port, "\ntime", now)
+		log.Println("[ServiceRegistry] Updated service:", name, "at", ip+":"+port)
 		return key
 	}
 	service := Service{
@@ -42,26 +44,38 @@ func (serviceRegistry *ServiceRegistry) Register(name string, ip string, protoco
 		Timestamp: now,
 	}
 	serviceRegistry.Services.Store(key, service)
-	log.Println("[ServiceRegistry] Registered service:", name, "at", ip, ":", port)
+	log.Println("[ServiceRegistry] Registered service:", name, "at", ip+":"+port)
 	return key
 }
 
 func (serviceRegistry *ServiceRegistry) Get(name string) (*Service, error) {
-	var serviceResponse Service
-	serviceRegistry.Services.Range(func(k, service any) bool {
-		if service.(Service).Name == name {
-			serviceResponse = service.(Service)
-			return false
+	services := make([]Service, 0)
+	serviceRegistry.Services.Range(func(k, value any) bool {
+		service := value.(Service)
+		if service.Name == name {
+			services = append(services, service)
 		}
 		return true
 	})
-	return &serviceResponse, errors.New("Service not found")
+	if len(services) == 0 {
+		return nil, errors.New("service not found")
+	}
+	if _, ok := serviceRegistry.serviceRR[name]; !ok {
+		serviceRegistry.serviceRR[name] = 0
+	}
+	val := serviceRegistry.serviceRR[name]
+	if val > len(services)-1 {
+		serviceRegistry.serviceRR[name] = 0
+		return &services[0], nil
+	}
+	serviceRegistry.serviceRR[name] = val + 1
+	return &services[val], nil
 }
 
 func (serviceRegistry *ServiceRegistry) Unregister(name string, ip string, port string) {
 	key := name + ip + port
 	serviceRegistry.Services.Delete(key)
-	log.Println("[ServiceRegistry] Unregister service:", name, "at", ip, ":", port)
+	log.Println("[ServiceRegistry] Unregister service:", name, "at", ip+":"+port)
 }
 
 func (serviceRegistry *ServiceRegistry) Cleanup() {
