@@ -1,11 +1,11 @@
 package gateway
 
 import (
-	"log"
 	"github.com/gofiber/fiber/v2"
 	"github.com/ushieru/serendipia/src/circuit_breaker"
 	"github.com/ushieru/serendipia/src/service_registry"
 	"io"
+	"log"
 	"strings"
 )
 
@@ -32,13 +32,13 @@ func (gateway Gateway) CallService(c *fiber.Ctx) error {
 	url := service.Protocol + "://" + service.Ip + ":" + service.Port + "/" + path
 	serviceResponse, err := gateway.CircuitBreaker.CallService(method, url, c.Context().RequestBodyStream(), c.GetReqHeaders())
 	if err != nil {
-		log.Println("[Gateway] Error >>>", err.Error())
+		log.Println("[Gateway]", err.Error())
 		return c.SendStatus(fiber.StatusInternalServerError)
 	}
 	defer serviceResponse.Body.Close()
 	body, responseBodyErr := io.ReadAll(serviceResponse.Body)
 	if responseBodyErr != nil {
-		log.Println("[Gateway] Response Body Error >>>", responseBodyErr.Error())
+		log.Println("[Gateway] Service", service.Name, "at", service.Ip+":"+service.Port, responseBodyErr.Error())
 		return c.SendStatus(fiber.StatusInternalServerError)
 	}
 	response := c.Response()
